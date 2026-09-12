@@ -1,4 +1,5 @@
 <!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="build" content="31">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#bcefff"><title>ルキ＆リリ＆ルカのにゃんこ学習クエスト</title><meta name="app-version" content="2026-09-12-v30-integrated">
 <style>
@@ -1231,6 +1232,56 @@ stopBgm=function(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null}};
 
   ensureOwned29();
   setupGacha29();
+})();
+
+
+/* PATCH v31: rebuild home layout to remove duplicated status bar and rebalance CTA */
+(function(){
+  const st=document.createElement('style');
+  st.textContent=`
+    #home{padding-top:4px}
+    #home .panel{background:linear-gradient(180deg,#eaf8ff 0%,#f7fdff 100%);border:4px solid #fff;border-radius:28px;overflow:visible;padding:16px;box-shadow:0 8px 22px #0e567322}
+    .homeHero31{position:relative;overflow:hidden;border-radius:24px;background:linear-gradient(180deg,#aee7ff 0%,#dff5ff 46%,#f8f1ca 100%);border:3px solid #8fd1ef;padding:18px 14px 16px;text-align:center;box-shadow:inset 0 0 0 3px #ffffff80}
+    .homeHero31:before,.homeHero31:after{content:'';position:absolute;border-radius:50%;background:#fff7;filter:blur(2px);pointer-events:none}
+    .homeHero31:before{width:170px;height:170px;left:-70px;top:-60px}.homeHero31:after{width:190px;height:190px;right:-80px;top:80px}
+    .homeLogo31{position:relative;z-index:1;font-weight:1000;color:#0b4c86;font-size:clamp(28px,7vw,44px);line-height:1.08;text-shadow:0 2px 0 #fff,0 4px 10px #0b4c8622;margin-top:2px}
+    .homeLogo31 .pink{color:#d93da1}.homeLogo31 .gold{color:#f2a900}.homeTag31{position:relative;z-index:1;margin:8px auto 12px;display:inline-block;background:#fff;border-radius:999px;padding:7px 13px;font-weight:900;color:#385b73;font-size:12px;border:2px solid #d8eef8}
+    .homeParty31{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;align-items:end;margin:4px 0 12px}
+    .homeChar31{background:#ffffffdc;border:2px solid #fff;border-radius:18px;padding:8px 6px 7px;box-shadow:0 5px 12px #143d5f1d;min-width:0}
+    .homeChar31 img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:14px;display:block;background:#dff4ff}
+    .homeChar31 b{display:block;margin-top:6px;color:#133e68;font-size:14px}.homeChar31 small{display:block;color:#577386;font-weight:800;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .homeStart31{position:relative;z-index:2;width:88%;max-width:520px;margin:10px auto 2px;border:0;border-radius:22px;background:linear-gradient(180deg,#ffab1f,#ff7410);color:#fff;font-weight:1000;font-size:clamp(24px,6.5vw,34px);padding:17px 18px;box-shadow:0 8px 0 #ca4c0d,0 13px 22px #ca4c0d33;text-shadow:0 2px 1px #a4431680;display:flex;align-items:center;justify-content:center;gap:10px}
+    .homeStart31:active{transform:translateY(3px);box-shadow:0 5px 0 #ca4c0d,0 9px 16px #ca4c0d33}
+    .homeSub31{position:relative;z-index:1;margin:10px 0 0;color:#416579;font-weight:800;font-size:11px}
+    .homeQuick31{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+    .homeQuick31 button{border:2px solid #cfe7f4;border-radius:16px;background:#fff;padding:11px 5px;color:#164b78;font-weight:1000;font-size:12px;box-shadow:0 3px 8px #0e567315}
+    .homeQuick31 span{display:block;font-size:24px;margin-bottom:2px}
+    #home .companionCard{display:none!important}
+    @media(max-width:420px){.homeHero31{padding:15px 10px 14px}.homeParty31{gap:6px}.homeChar31{padding:6px 5px}.homeStart31{width:94%;padding:15px 12px}.homeQuick31{gap:6px}.homeQuick31 button{font-size:11px;padding:9px 4px}}
+  `;
+  document.head.appendChild(st);
+
+  const home=document.getElementById('home');
+  if(!home) return;
+  const panel=home.querySelector('.panel');
+  if(!panel) return;
+  panel.innerHTML=`
+    <div class="homeHero31">
+      <div class="homeLogo31"><span class="gold">ルキ</span>・<span class="pink">リリ</span>・ルカの<br>にゃんこ学習クエスト</div>
+      <div class="homeTag31">まなんで、たたかって、3匹といっしょに強くなる！</div>
+      <div class="homeParty31">
+        <div class="homeChar31"><img src="${HERO_BASE.ruki}" alt="ルキ"><b>ルキ</b><small>ねこ剣士</small></div>
+        <div class="homeChar31"><img src="${HERO_BASE.lili}" alt="リリ"><b>リリ</b><small>ねこ魔法使い</small></div>
+        <div class="homeChar31"><img src="${HERO_BASE.luka}" alt="ルカ"><b>ルカ</b><small>ねこレンジャー</small></div>
+      </div>
+      <button class="homeStart31" type="button" data-action="grade"><span>🐾</span><span>ぼうけんをはじめる</span></button>
+      <div class="homeSub31">学年を選んで、マップから好きな教科に挑戦しよう！</div>
+    </div>
+    <div class="homeQuick31">
+      <button type="button" data-action="gacha"><span>🎁</span>ガチャ</button>
+      <button type="button" data-action="dress"><span>🎒</span>もちもの</button>
+      <button type="button" data-action="missions"><span>🏆</span>ミッション</button>
+    </div>`;
 })();
 
 initExtras();
