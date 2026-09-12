@@ -487,6 +487,276 @@ bgmTick=function(){
 startBgm=function(){const c=ensureAudio();if(!c)return;c.resume?.();stopBgm();bgmTick();bgmTimer=setInterval(bgmTick,230)};
 stopBgm=function(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null}};
 
+
+/* PATCH v24: gacha excitement, boss battle polish, costume thumbnails, equipment switching */
+(function(){
+  const extraStyle=`
+  .gachaBox{background:linear-gradient(180deg,#fff8c8 0%,#f8ffe0 52%,#f1fbff 100%)!important;border:4px solid #fff;box-shadow:0 10px 24px #ffd65c33,inset 0 0 0 3px #ffe8a3;position:relative;overflow:hidden}
+  .gachaBox::before,.gachaBox::after{content:'';position:absolute;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,#fff6b0aa 0%,#fff6b000 70%);pointer-events:none}
+  .gachaBox::before{left:-30px;top:-20px}.gachaBox::after{right:-10px;bottom:-30px}
+  .gachaLead{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#ffb703,#ff7b00);color:#fff;padding:7px 14px;border-radius:999px;font-weight:1000;font-size:13px;box-shadow:0 4px 12px #ff8f1f55;margin-bottom:10px}
+  .gachaMini{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:-2px 0 10px}
+  .gachaMini span{background:#fff;border:2px solid #ffe29a;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:900;color:#7a4a00}
+  .gachaBurst{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0 4px}
+  .gachaBurst span{background:linear-gradient(135deg,#fff,#fff7d0);border:2px solid #ffd45c;border-radius:14px;padding:8px 10px;font-size:12px;font-weight:900;color:#1c4272;box-shadow:0 3px 8px #ffd75a26}
+  .chest{font-size:110px;animation:gachaFloat 1.8s ease-in-out infinite;transform-origin:center;filter:drop-shadow(0 8px 8px #ff9b2a40)!important}
+  @keyframes gachaFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-7px) scale(1.04)}}
+  .gachaBtns button{box-shadow:0 8px 0 #00000012,0 12px 20px #00000012}
+  .gachaBtns button:active{transform:translateY(2px)}
+  .gachaBtns .ssr{grid-column:1/-1;background:linear-gradient(100deg,#6f2bd4,#d52fa8 38%,#ff9f1c 72%,#ffd84d);border:3px solid #fff3a6;color:#fff;text-shadow:0 2px 3px #5b1459;box-shadow:0 0 0 3px #b741d840,0 8px 0 #6c1b8640,0 14px 24px #9d2cc733;position:relative;overflow:hidden}
+  .gachaBtns .ssr::before{content:'SSR';position:absolute;left:12px;top:50%;transform:translateY(-50%);background:#fff;color:#a124b6;border-radius:999px;padding:5px 8px;font-size:11px;font-weight:1000;text-shadow:none}
+  .gachaBtns .ssr:active{transform:translateY(2px)}
+  .ssrHint{margin-top:8px;font-size:12px;font-weight:900;color:#7a318a}
+  .ssrOwned{margin-top:12px;background:#ffffffb8;border:2px solid #efd4ff;border-radius:16px;padding:10px}
+  .ssrOwnedTitle{font-size:12px;font-weight:1000;color:#76278a;margin-bottom:6px}
+  .ssrOwnedList{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}.ssrOwnedList span{font-size:11px;font-weight:900;background:linear-gradient(135deg,#f4e8ff,#fff6cf);border:1px solid #e3c1f4;border-radius:999px;padding:5px 8px;color:#54305d}
+  .result{min-height:64px}
+  .resultCard{margin-top:12px;background:#fff;border:3px solid #ffe095;border-radius:18px;padding:12px;box-shadow:0 5px 14px #ffd65a26}
+  .resultTitle{font-size:14px;font-weight:1000;color:#ff7a00;letter-spacing:.04em;margin-bottom:7px}
+  .resultList{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .resultChip{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#eaf6ff,#fff6d7);border:2px solid #d7e9ff;border-radius:999px;padding:6px 10px;font-weight:900;font-size:12px;color:#16385e}
+  .resultChip.sr{border-color:#ffcb53;background:linear-gradient(135deg,#fff9d2,#ffe4a2)}
+  .resultChip.r{border-color:#b8d9ff;background:linear-gradient(135deg,#eef8ff,#e6f3ff)}
+  .resultChip.n{border-color:#d7dde7;background:linear-gradient(135deg,#f8fbff,#eef3f7)}
+  .battleArena.bossMode{background:linear-gradient(180deg,#f4e3ff 0%,#fff1d2 100%)!important;box-shadow:0 0 0 3px #ffffff,inset 0 0 0 4px #7b2fa514,0 12px 24px #84249a18}
+  .bossAlert{display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#6f1d9f,#cd2f68);color:#fff;border:2px solid #ffd875;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:1000;letter-spacing:.08em;box-shadow:0 4px 12px #45115a2e}
+  .enemyBossWrap{gap:5px!important}
+  .enemyBossWrap img{width:122px!important;height:122px!important;object-position:center top!important;box-shadow:0 0 0 4px #59207e,0 0 0 8px #f8d56f,0 10px 22px #2b093e40!important;background:radial-gradient(circle at 50% 10%,#9d56d2,#341149)!important}
+  .bossSub{font-size:10px;font-weight:900;color:#6b2b7c;background:#fff8;border-radius:999px;padding:3px 8px}
+  .battleHeroTag{display:inline-flex;align-items:center;gap:4px;margin-top:4px;background:#fff;border:2px solid #dbe7f5;border-radius:999px;padding:3px 8px;font-size:11px;font-weight:900}
+  .equipSummary .eq{cursor:pointer;position:relative;padding-bottom:24px}
+  .equipSummary .eq::after{content:'タップで変更';position:absolute;left:50%;bottom:6px;transform:translateX(-50%);font-size:10px;font-weight:800;color:#8d6510;white-space:nowrap;background:#fff8;border-radius:999px;padding:1px 7px}
+  .equipSummary .eq:active{transform:translateY(1px)}
+  .thumbWrap img{background:linear-gradient(180deg,#f3fbff,#e7f6ff)}
+  .costume{overflow:hidden}
+  .costumeName{padding:4px 2px 0}
+  .portrait.activeHero{box-shadow:0 0 0 3px #ffe19c inset,0 8px 18px #00000014}
+  `;
+  const st=document.createElement('style'); st.textContent=extraStyle; document.head.appendChild(st);
+
+  const equipCatalog={
+    ruki:{weapon:[['ルキの聖剣',0],['ひかりの太刀',2],['ほのおのブレード',4]],acc:[['王家の首輪',0],['勇者のメダル',2],['守りのチャーム',3]]},
+    lili:{weapon:[['星読みの杖',0],['月光のロッド',2],['虹のワンド',4]],acc:[['王家の首輪',0],['知恵のリボン',2],['星屑チャーム',3]]},
+    luka:{weapon:[['月影の弓',0],['風切りのボウ',2],['流星アロー',4]],acc:[['蒼月の首輪',0],['森のブローチ',2],['疾風のバッジ',3]]}
+  };
+  const defaultEquip={
+    ruki:{weapon:'ルキの聖剣',acc:'王家の首輪'},
+    lili:{weapon:'星読みの杖',acc:'王家の首輪'},
+    luka:{weapon:'月影の弓',acc:'蒼月の首輪'}
+  };
+  function ensureEquip(){
+    save.equipment=save.equipment||{};
+    ['ruki','lili','luka'].forEach(ch=>{
+      save.equipment[ch]={...(defaultEquip[ch]||{}),...(save.equipment[ch]||{})};
+    });
+  }
+  ensureEquip();
+  function getCostumeRarity(char,name){
+    const found=(costumeData[char]||[]).find(v=>v[0]===name);
+    return found?found[1]:'N';
+  }
+  function getCostumeImg(char,name){
+    return (COSTUME_IMGS && COSTUME_IMGS[char] && COSTUME_IMGS[char][name]) || BATTLE_CLEAN[char] || HERO_BASE[char];
+  }
+  function getEquipBonus(char){
+    ensureEquip();
+    const pool=equipCatalog[char]||equipCatalog.ruki;
+    const eq=save.equipment[char]||defaultEquip[char];
+    const w=(pool.weapon.find(v=>v[0]===eq.weapon)||pool.weapon[0])[1]||0;
+    const a=(pool.acc.find(v=>v[0]===eq.acc)||pool.acc[0])[1]||0;
+    const c=({N:0,R:2,SR:5,SSR:8})[getCostumeRarity(char,save.costume?.[char]||'ノーマル')]||0;
+    return w+a+c;
+  }
+  function refreshPower(){
+    const ssrBonus=Math.min(24,(Array.isArray(save.ssrOwned)?save.ssrOwned.length:0)*4);
+    save.power=Math.min(99,20+getEquipBonus(save.char)+(Math.max(1,level())-1)+ssrBonus);
+  }
+  persist=function(){refreshPower();localStorage.setItem('nyankoQuestV22',JSON.stringify(save));sync();};
+
+  function setupGachaUi(){
+    const box=document.querySelector('#gacha .gachaBox');
+    if(!box) return;
+    box.innerHTML=`<div class="gachaLead">✨ ワクワク！レアコスチュームをねらおう！</div>
+      <div class="chest">🎁✨</div>
+      <div class="gachaMini"><span>コスチューム解放</span><span>装備も強化</span><span>10連で一気にGET！</span></div>
+      <h2>コインで装備・コスチュームをGET！</h2>
+      <div class="gachaBurst"><span>SRコスチュームも登場！</span><span>引くほどパワーUP</span></div>
+      <div class="gachaBtns"><button class="one" data-gacha="1">1回ガチャ<br>🪙10</button><button class="ten" data-gacha="10">10回ガチャ<br>🪙100</button><button class="ssr" type="button" data-ssr-gacha>🌈 SSR確定ガチャ<br>🪙1000</button></div>
+      <div class="ssrHint">1000コインでSSRが1個確定！かぶってもコレクションに残ります。</div>
+      <div class="result" id="gachaResult"></div><div class="ssrOwned"><div class="ssrOwnedTitle">🌈 SSRコレクション</div><div class="ssrOwnedList" id="ssrOwnedList"></div></div>`;
+  }
+  setupGachaUi();
+
+  const ssrPool=[
+    '⚔️ 雷神の聖剣',
+    '🔮 星界の大魔杖',
+    '🏹 蒼月神弓',
+    '👑 皇帝の王冠',
+    '🪽 天空のマント',
+    '💎 神秘の首輪'
+  ];
+  if(!Array.isArray(save.ssrOwned)) save.ssrOwned=[];
+  function renderSsrOwned(){
+    const box=document.getElementById('ssrOwnedList');
+    if(!box) return;
+    box.innerHTML=save.ssrOwned.length
+      ? save.ssrOwned.map(x=>`<span>${x}</span>`).join('')
+      : '<span>まだSSRを持っていません</span>';
+  }
+  function doSsrGacha(){
+    const cost=1000;
+    if(save.coins<cost){toast('SSR確定には1000コイン必要だよ');return}
+    save.coins-=cost;
+    save.gacha+=1;
+    const item=ssrPool[rand(ssrPool.length)];
+    if(!save.ssrOwned.includes(item)) save.ssrOwned.push(item);
+    save.xp+=50;
+    persist();
+    const res=document.getElementById('gachaResult');
+    if(res) res.innerHTML=`<div class="resultCard" style="border-color:#d950e8;box-shadow:0 0 0 3px #ffe36d inset,0 8px 22px #9c2bb73d"><div class="resultTitle" style="font-size:17px;color:#a31aba">🌈 SSR確定！</div><div class="resultList"><span class="resultChip sr" style="font-size:14px;padding:10px 14px">SSR・${item}</span></div><div style="margin-top:8px;font-size:12px;font-weight:900;color:#70407e">+50 EXP</div></div>`;
+    renderSsrOwned();
+    toast('SSR GET！ '+item);
+  }
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('[data-ssr-gacha]');
+    if(!b) return;
+    e.preventDefault();e.stopPropagation();
+    doSsrGacha();
+  },true);
+  renderSsrOwned();
+
+  function chipRarity(item){
+    if(/スタイル|着物|ドレス|マント/.test(item)) return 'SR';
+    if(/杖|弓|剣|首輪|ローブ|フード|帽子/.test(item)) return 'R';
+    return 'N';
+  }
+  doGacha=function(n){
+    const cost=n*10;
+    if(save.coins<cost){toast('コインが足りないよ');return}
+    save.coins-=cost; save.gacha+=n;
+    const got=[];
+    for(let i=0;i<n;i++) got.push(loot[rand(loot.length)]);
+    const best=got.some(v=>chipRarity(v)==='SR')?'SR':(got.some(v=>chipRarity(v)==='R')?'R':'N');
+    const take=got.slice(0,Math.min(8,n));
+    document.getElementById('gachaResult').innerHTML=`<div class="resultCard"><div class="resultTitle">${best==='SR'?'🌈 SUPER RARE GET!':'✨ GET!'}</div><div class="resultList">${take.map(v=>`<span class="resultChip ${chipRarity(v).toLowerCase()}">${chipRarity(v)}・${v}</span>`).join('')}${got.length>take.length?`<span class="resultChip n">ほか ${got.length-take.length}件</span>`:''}</div></div>`;
+    refreshPower(); persist();
+    toast(best==='SR'?'レアコスチュームGET！':'ガチャ成功！');
+  };
+
+  createThumbWrap=function(char,name){
+    const v=getCostumeVisual(char,name);
+    const wrap=document.createElement('div'); wrap.className='thumbWrap';
+    const img=document.createElement('img'); img.src=getCostumeImg(char,name); img.alt=name||char;
+    const icon=document.createElement('span'); icon.className='thumbIcon'; icon.textContent=v.icon;
+    const ribbon=document.createElement('div'); ribbon.className='thumbRibbon'; ribbon.textContent=v.label; ribbon.style.background='linear-gradient(135deg,'+v.color+',#17385f)';
+    wrap.append(img,icon,ribbon); return wrap;
+  };
+
+  renderBattle=function(){
+    const heroKey=save.char==='lili'?'lili':save.char==='luka'?'luka':'ruki';
+    const heroNames={ruki:'ルキ',lili:'リリ',luka:'ルカ'};
+    const selected=save.costume?.[heroKey]||'ノーマル';
+    const heroSrc=getCostumeImg(heroKey,selected);
+    const vis=getCostumeVisual(heroKey,selected);
+    battleTitle.textContent=battle.boss?'👑 BOSS BATTLE':`${battle.enemy} ${subNames[battle.sub]} BATTLE`;
+    qSub.textContent=battle.boss?`BOSS・${subNames[battle.sub]}の問題`:`${subNames[battle.sub]}の問題`;
+    qCount.textContent=`${battle.round}/${battle.total}`;
+    question.textContent=battle.q.text;
+    heroImg.src=heroSrc;
+    heroImg.style.border='3px solid '+vis.color;
+    heroImg.style.boxShadow='0 0 0 3px #fff, 0 4px 12px #0001';
+    heroName.innerHTML=`${heroNames[heroKey]}<div class="battleHeroTag" style="border-color:${vis.color}55;color:#17385f"><span>${vis.icon}</span><span>${selected}</span></div>`;
+    const arena=document.querySelector('.battleArena'); if(arena) arena.classList.toggle('bossMode',!!battle.boss);
+    if(battle.boss){
+      enemyPic.innerHTML=`<div class="enemyBossWrap"><div class="bossAlert">FINAL BOSS</div><img class="enemyBossImg" src="${BOSS_CLEAN}" alt="ダークにゃおん"><div class="enemyBossNamePlate">👑 ダークにゃおん</div><div class="bossSub">闇の王 / ねこボス</div></div>`;
+      enemyName.textContent='';
+    }else{
+      enemyPic.innerHTML=`<div style="font-size:88px;line-height:1.1">${battle.enemy}</div>`;
+      enemyName.textContent=battle.enemyName;
+    }
+    enemyHp.style.width=Math.max(0,battle.enemyHp/battle.maxEnemyHp*100)+'%';
+    heroHp.style.width=Math.max(0,battle.heroHp/battle.maxHeroHp*100)+'%';
+    answers.innerHTML='';
+    battle.q.opts.forEach(o=>{const b=document.createElement('button');b.className='ans';b.type='button';b.textContent=o;b.addEventListener('click',()=>answer(o,b));answers.appendChild(b)});
+    hint.textContent=battle.attempt===1?(battle.boss?'🔥 BOSS戦！1回目正解で特大ダメージ！':'💡 1回目正解なら大ダメージ！'):`💡 ${battle.attempt}回目の挑戦`;
+  };
+
+  renderDress=function(){
+    ensureEquip();
+    const names={ruki:'ルキ',lili:'リリ',luka:'ルカ'};
+    const subTexts={ruki:'ベンガル / ねこ剣士',lili:'ラグドール / ねこ魔法使い',luka:'ロシアンブルー / ねこレンジャー'};
+    const tabs={ruki:rukiTab,lili:liliTab,luka:lukaTab};
+    const portraits={ruki:rukiPortrait,lili:liliPortrait,luka:lukaPortrait};
+    const previews={ruki:rukiPreview,lili:liliPreview,luka:lukaPreview};
+    Object.keys(tabs).forEach(k=>{
+      tabs[k]?.classList.toggle('sel',save.char===k);
+      portraits[k]?.classList.toggle('activeHero',save.char===k);
+      const cn=save.costume?.[k]||'ノーマル';
+      const vis=getCostumeVisual(k,cn);
+      if(previews[k]){
+        previews[k].src=getCostumeImg(k,cn);
+        previews[k].style.border='3px solid '+vis.color;
+        previews[k].style.boxShadow='0 0 0 3px #fff inset';
+      }
+      const info=portraits[k]?.querySelector('.info');
+      if(info) info.innerHTML=`<b>${names[k]}</b><br><span class="small">${subTexts[k]}</span><span class="miniAccent"><span>${vis.icon}</span>${cn}</span><span class="equipLine">⚔️ ${(save.equipment[k]||{}).weapon||''} / 💎 ${(save.equipment[k]||{}).acc||''}</span>`;
+    });
+    costumeTitle.textContent=names[save.char]+'のコスチューム';
+    const items=costumeData[save.char]||[];
+    costumes.replaceChildren();
+    items.forEach(([name,rarity])=>{
+      const btn=document.createElement('button');
+      btn.type='button';
+      btn.className='costume'+(save.costume[save.char]===name?' selected':'');
+      btn.dataset.costume=name;
+      btn.append(createThumbWrap(save.char,name));
+      const badge=document.createElement('span'); badge.className='costumeBadge'; badge.textContent=rarity;
+      const label=document.createElement('div'); label.className='costumeName'; label.textContent=name;
+      btn.append(badge,label);
+      if(save.costume[save.char]===name){const check=document.createElement('span');check.className='costumeCheck';check.textContent='✓';btn.append(check)}
+      btn.addEventListener('click',ev=>{
+        ev.preventDefault();ev.stopPropagation();
+        save.costume[save.char]=name; persist(); renderDress(); toast(name+'に着替えた！');
+      });
+      costumes.appendChild(btn);
+    });
+    const eqs=save.equipment[save.char]||defaultEquip[save.char];
+    eqWeapon.textContent=eqs.weapon;
+    eqArmor.textContent=save.costume[save.char]||'ノーマル';
+    eqAcc.textContent=eqs.acc;
+    [['weapon',eqWeapon],['armor',eqArmor],['acc',eqAcc]].forEach(([type,el])=>{const box=el.parentElement; if(box){box.dataset.equip=type; box.setAttribute('role','button')}});
+  };
+
+  function cycleItem(list,current){
+    const i=Math.max(0,list.findIndex(v=>v[0]===current));
+    return list[(i+1)%list.length][0];
+  }
+  document.addEventListener('click',function(e){
+    const box=e.target.closest('.eq[data-equip]');
+    if(!box) return;
+    e.preventDefault();
+    e.stopPropagation();
+    ensureEquip();
+    const char=save.char, type=box.dataset.equip;
+    if(type==='armor'){
+      const names=(costumeData[char]||[]).map(v=>v[0]);
+      const cur=save.costume[char]||names[0];
+      const idx=Math.max(0,names.indexOf(cur));
+      save.costume[char]=names[(idx+1)%names.length];
+      toast('コスチューム変更：'+save.costume[char]);
+    }else if(type==='weapon'){
+      save.equipment[char].weapon=cycleItem(equipCatalog[char].weapon,save.equipment[char].weapon);
+      toast('武器変更：'+save.equipment[char].weapon);
+    }else if(type==='acc'){
+      save.equipment[char].acc=cycleItem(equipCatalog[char].acc,save.equipment[char].acc);
+      toast('アクセ変更：'+save.equipment[char].acc);
+    }
+    persist(); renderDress();
+  },true);
+
+  refreshPower();
+})();
+
 initExtras();
 renderDress();sync();
 if(save.bgmOn){const once=()=>{startBgm();document.removeEventListener('pointerdown',once)};document.addEventListener('pointerdown',once,{once:true})}
